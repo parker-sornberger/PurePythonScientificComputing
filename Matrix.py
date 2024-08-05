@@ -22,16 +22,10 @@ class Array(list):
         self._get_rowcol()
         self._inner_shape = (self._row, self._col)
         
-        self._setup_generators()
         self.square_type = self._row == self._col
     
     
-    def prettystr(self, full = False):
-        def print_row(row):
-            maxwidth = 20
-            
-        def print_mat(mat):
-            pass
+        #self._setup_generators()
         
         
     def __getitem__(self, index):
@@ -40,9 +34,9 @@ class Array(list):
             stop = len(mat) if i.stop is None else i.stop
             step = 1 if i.step is None else i.step
             ret = Array()
-
+            append = ret.append
             for I in range(start, stop, step):
-                ret.append(mat[I])
+                append(mat[I])
             return Array.from_container(ret)
         if isinstance(index, slice):
             return _slice(self, index)
@@ -54,10 +48,10 @@ class Array(list):
                     rval = _slice(self, i, k) if rval is None else _slice(rval, i, k)
                     continue
                 rval = self[i] if rval is None else rval[i]
-                
             return rval
         
         return super().__getitem__(index)
+    
     def __setitem__(self, i, o):
         if isinstance(i, tuple):
 
@@ -65,127 +59,116 @@ class Array(list):
             item[i[-1]] = o
             return
         return super().__setitem__(i, o)
-        
+    def _add(self, other):
+        copy = Array()
+        append = copy.append
+        if not isinstance(other, Array):
+            for item in self.flatiter():
+                append(item + other)
+            return copy.reshape(*self.shape)
+        assert self.shape == other.shape, "you suck"
+        for item, otheritem in zip(self.flatiter(), other.flatiter()):
+            append(item + otheritem)
+        return copy.reshape(*self.shape)  
 
     def __add__(self, other):
-        copy = self.copy()
-        
+        copy = Array()
+        append = copy.append
         if not isinstance(other, Array):
-            for index in range(len(self)):
-                
-                copy[index]  = copy[index]+ other
-        else:
-            assert self.shape == other.shape, "you suck"
-            for index, (self_row, other_row) in enumerate(zip(self, other)):
-                
-                copy[index] = self_row + other_row
-        return copy
+            for item in self.flatiter():
+                append(item + other)
+            return copy.reshape(*self.shape)
+        assert self.shape == other.shape, "you suck"
+        for item, otheritem in zip(self.flatiter(), other.flatiter()):
+            append(item + otheritem)
+        return copy.reshape(*self.shape)  
     
     def __sub__(self, other):
-        copy = self.copy()
-
-        
+        copy = Array()
+        append = copy.append
         if not isinstance(other, Array):
-            for index in range(len(self)):
-                
-                copy[index]  = copy[index] - other
-        else:
-            assert self.shape == other.shape, "you suck"
-            for index, (self_row, other_row) in enumerate(zip(self, other)):
-
-                copy[index] = self_row - other_row
-
-        return copy
+            for item in self.flatiter():
+                append(item - other)
+            return copy.reshape(*self.shape)
+        assert self.shape == other.shape, "you suck"
+        for item, otheritem in zip(self.flatiter(), other.flatiter()):
+            append(item - otheritem)
+        return copy.reshape(*self.shape)  
         
     def __mul__(self, other):
-        copy = self.copy()
-        
+        copy = Array()
+        append = copy.append
         if not isinstance(other, Array):
-            for index in range(len(self)):
-                
-                copy[index]  = copy[index] * other
-        else:
-            
-            for index, (self_row, other_row) in enumerate(zip(self, other)):
-                
-                copy[index] = self_row * other_row
-        return copy
+            for item in self.flatiter():
+                append(item * other)
+            return copy.reshape(*self.shape)
+        assert self.shape == other.shape, "you suck"
+        for item, otheritem in zip(self.flatiter(), other.flatiter()):
+            append(item * otheritem)
+        return copy.reshape(*self.shape)  
+    
     def _matmul(self, other):
         temp = Array()
-
+        append = temp.append
         for mat, mat2 in zip(self.matiter(), other.matiter()):
-            temp.append(mat @ mat2)
+            append(mat @ mat2)
         temp.shape = Array._calc_shape(temp)
         bigger_shape = self.shape if len(self.shape) > len(other.shape) else other.shape
         newshape = list(bigger_shape)[:-2] + [self._row, self._row]
-
         temp = temp.reshape(*newshape)
         return temp
-        
     def _mul_mat_and_vec(self, other):
         temp = Array()
+        append = temp.append
         mat, vec= (self, other) if other.oneD  else (other, self)
-
         for row in mat.rowiter():
-
-            temp.append(sum(a * b for a, b in zip(row, other) ))
+            append(sum(a * b for a, b in zip(row, other) ))
         temp.shape = Array._calc_shape(temp)
         temp = temp.reshape(*mat.shape[:-1])
         return temp
     def __matmul__(self, other):
-
         assert self._row == other._col
-        
         if other.oneD or self.oneD:
             return self._mul_mat_and_vec(other)
         if other.nD or self.nD:
-
             return self._matmul(other)
-
         size = len(other[0]) if len(other.shape)>1 else len(other)
-
-        temp = Array(self._batch(it.starmap(self._sumprod, it.product(self, other.T)), size))
+        temp = Array(self._batch(it.starmap(self.dot, it.product(self, other.T)), size))
         return temp
 
     def __truediv__(self, other):
-        copy = self.copy()
-        
+        copy = Array()
+        append = copy.append
         if not isinstance(other, Array):
-            for index in range(len(self)):
-                
-                copy[index]  = copy[index] / other
-        else:
-            assert self.shape == other.shape, "you suck"
-            for index, (self_row, other_row) in enumerate(zip(self, other)):
-                
-                copy[index] = self_row / other_row
-        return copy
+            for item in self.flatiter():
+                append(item / other)
+            return copy.reshape(*self.shape)
+        assert self.shape == other.shape, "you suck"
+        for item, otheritem in zip(self.flatiter(), other.flatiter()):
+            append(item / otheritem)
+        return copy.reshape(*self.shape)  
     def __floordiv__(self, other):
-        copy = self.copy()
-        
+        copy = Array()
+        append = copy.append
         if not isinstance(other, Array):
-            for index in range(len(self)):
-                
-                copy[index]  = copy[index] // other
-        else:
-            assert self.shape == other.shape, "you suck"
-            for index, (self_row, other_row) in enumerate(zip(self, other)):
-                
-                copy[index] = self_row // other_row
-        return copy
+            for item in self.flatiter():
+                append(item // other)
+            return copy.reshape(*self.shape)
+        assert self.shape == other.shape, "you suck"
+        for item, otheritem in zip(self.flatiter(), other.flatiter()):
+            append(item // otheritem)
+        return copy.reshape(*self.shape)  
     def __mod__(self, other):
-        copy = self.copy()
-        
+        copy = Array()
+        append = copy.append
         if not isinstance(other, Array):
-            for index in range(len(self)):
-                
-                copy[index]  = copy[index] % other
-        else:
-            assert self.shape == other.shape, "you suck"
-            for index, (self_row, other_row) in enumerate(zip(self, other)):
-                
-                copy[index] = self_row % other_row
-        return copy
+            for item in self.flatiter():
+                append(item % other)
+            return copy.reshape(*self.shape)
+        assert self.shape == other.shape, "you suck"
+        for item, otheritem in zip(self.flatiter(), other.flatiter()):
+            append(item % otheritem)
+        return copy.reshape(*self.shape)  
     
         
         
@@ -196,6 +179,7 @@ class Array(list):
     def __rsub__(self, other):
         return self.__add__(other)
     def __radd__(self, other):
+        
         return self.__add__(other)
     def __rtruediv__(self, other):
         return self.__truediv__(other)
@@ -205,58 +189,65 @@ class Array(list):
         return self.__mod__(other)
     def __lt__(self, other):
         res = Array()
+        append = res.append
         if not isinstance(other, Array):
             
             for item in self.flatiter():
-                res.append(item < other)
+                append(item < other)
             
         else:
             for myitem, otheritem in zip(self.flatiter(), other.flatiter()):
-                res.append(myitem < otheritem)
+                append(myitem < otheritem)
         res = res.reshape(*self.shape)
         return res
             
     def __le__(self, other):
         res = Array()
+        append = res.append
         if not isinstance(other, Array):
             
             for item in self.flatiter():
-                res.append(item <= other)
+                append(item <= other)
             
         else:
             for myitem, otheritem in zip(self.flatiter(), other.flatiter()):
-                res.append(myitem <= otheritem)
+                append(myitem <= otheritem)
         res = res.reshape(*self.shape)
         return res
 
     def __gt__(self, other):
         res = Array()
+        append = res.append
         if not isinstance(other, Array):
             
             for item in self.flatiter():
-                res.append(item > other)
+                
+                append(item > other)
             
         else:
             for myitem, otheritem in zip(self.flatiter(), other.flatiter()):
-                res.append(myitem > otheritem)
+                
+                append(myitem > otheritem)
         res = res.reshape(*self.shape)
         return res
     def __ge__(self, other):
         res = Array()
+        append = res.append
         if not isinstance(other, Array):
             
             for item in self.flatiter():
-                res.append(item >= other)
+                append(item >= other)
             
         else:
             for myitem, otheritem in zip(self.flatiter(), other.flatiter()):
-                res.append(myitem >= otheritem)
+                append(myitem >= otheritem)
         res = res.reshape(*self.shape)
         return res
     def __neg__(self):
         n = Array()
+        append = n.append
         for i in self.flatiter():
-            n.append(-i)
+            append(-i)
         return n.reshape(*self.shape)
 
 
@@ -275,19 +266,17 @@ class Array(list):
         else:
             self._row, self._col = self.shape[-2], self.shape[-1]
     def _setup_chain(self, times):
-       
         if times == 0:
             return iter(self)
-
         y_obj = it.chain.from_iterable(self)
         for _ in range(times-1):
             y_obj = it.chain.from_iterable(y_obj)
         return y_obj
     def _setup_generators(self):
         self._flat = self._setup_chain(times = len(self.shape)-1)
-        
         self._rowiter = self._setup_chain(times = len(self.shape) -2)
         self._matiter = self._setup_chain(times = len(self.shape)-3)
+        
     def flatiter(self):
         self._flat = self._setup_chain(times = len(self.shape)-1)
         yield from self._flat
@@ -309,24 +298,22 @@ class Array(list):
             
     def numel(self):
         return math.prod(self.shape)
+    
     def copy(self):
-
-        
-        
         return self.reshape(*self.shape)
 
     def flatten(self):
 
         return Array(self.flatiter())
 
-    def flat_index(self, index):
-        if not index:
-            indices = tuple(0 for _ in self.shape)
-            return self[indices]
-        def index_math(index, shape):
-            pass
-        indices = index_math(index, self.shape)
-        return self[indices]
+    # def flat_index(self, index):
+    #     if not index:
+    #         indices = tuple(0 for _ in self.shape)
+    #         return self[indices]
+    #     def index_math(index, shape):
+    #         pass
+    #     indices = index_math(index, self.shape)
+    #     return self[indices]
 
     def reshape(self, *new_shape):
 
@@ -354,10 +341,12 @@ class Array(list):
             for size in reversed(new_shape):
                 chunk = batch_factory(chunk, size)
             return chunk
+        
     def abs(self):
         res = Array()
+        append = res.append
         for item in self.flatiter():
-            res.append(abs(item))
+            append(abs(item))
         return res.reshape(*self.shape)
 
     def unravel_index(self, index,):
@@ -370,6 +359,12 @@ class Array(list):
     def flat_index(self, index):
         multi_index = self.unravel_index(index)
         return self[multi_index]
+    def iterate_over_dim(self, dim):
+        #shape = (dim0, dim1, dim2, ...dimM)
+        #rowiter == dimM
+        #iter(self) == dim0
+        #dim == 
+        pass
 
     def sum(self):
         return sum(self.flatiter())
@@ -413,29 +408,31 @@ class Array(list):
     
     @classmethod
     def det(cls, arr):
+        #got this from 
+        #https://github.com/ThomIves/BasicLinearAlgebraToolsPurePy/blob/master/LinearAlgebraPurePython.py
         def get_det(A):
             n = len(A)
             AM = A.copy()
         
-            
+            # Section 2: Row manipulate A into an upper triangle matrix
             for fd in range(n):  # fd stands for focus diagonal
                 if AM[fd][fd] == 0:
                     AM[fd][fd] = 1.0e-18  # Cheating by adding zero + ~zero
                 for i in range(fd+1, n):  # skip row with fd in it.
                     crScaler = AM[i][fd] / AM[fd][fd]  # cr stands for "current row".
-                    for j in range(n):  
+                    for j in range(n):  # cr - crScaler * fdRow, one element at a time.
                         AM[i][j] = AM[i][j] - crScaler * AM[fd][j]
         
-            
+            # Section 3: Once AM is in upper triangle form ...
             product = 1.0
             for i in range(n):
-                product *= AM[i][i] 
+                product *= AM[i][i]  # ... product of diagonals is determinant
         
             return product
         
         row, col = arr._inner_shape
-        assert row == col, "Can only get dets for square(ish) arrays"
-        if len(arr.shape) == 2:
+        assert arr.square_type, "Can only get dets for square(ish) arrays"
+        if arr.twoD:
             return get_det(arr)
         detshape = arr.shape[:-2]
         dets = Array.zeros(*detshape).flatten()
@@ -457,12 +454,12 @@ class Array(list):
     @classmethod
     def zeros(cls, *shape):
         arr = cls._fill(shape, fill_val=0)
-        
+        #arr.shape = shape
         return arr
     @classmethod
     def ones(cls, *shape):
         arr = cls._fill(shape, fill_val=1)
-        
+        #arr.shape = shape
         return arr
     @classmethod
     def rand(cls, *shape):
@@ -480,7 +477,7 @@ class Array(list):
         steps = int(steps)
         step = abs_diff/(steps-1)
         _space  = cls(start + step *  interval for interval in range(steps))
-       
+        #_space.shape = len(_space)
         return _space
         
     @classmethod
@@ -494,7 +491,7 @@ class Array(list):
             _range = cls(range(start))
         elif not stop and step !=1:
             _range  = cls(range(0, start, step))
-        
+        #_range.shape = (len(_range), )
         return _range
     @classmethod
     def eye(cls, size):
@@ -561,7 +558,7 @@ class Array(list):
             else:
                 newshape = list(it.chain.from_iterable(( x, 1) if x != 1 else (x,) for x in arr.shape))
                 
-       
+        # if arr.shape is (1, x, 1) then expand(arr) is (1, 3, 1, 1). Do we want this?
         return arr.reshape(*newshape)
     @classmethod
     def diag_flat(cls, diag):
@@ -614,6 +611,7 @@ class Array(list):
         cls.check_singular(mat, tol)
         n = len(mat)
         AM = mat.copy()
+        #I = identity_matrix(n)
         I = cls.eye(n)
         IM = I.copy()
      
@@ -644,12 +642,6 @@ class Array(list):
     @classmethod
     def all(cls, condition):
         for cond in condition.flatiter():
-            if not cond:
-                return False
-        return True
-    @classmethod
-    def all(cls, condition):
-        for cond in condition.flatiter():
             if  cond:
                 return True
         return False
@@ -657,6 +649,7 @@ class Array(list):
     @classmethod
     def where(cls, condition):
         indices = []
+        append = indices.append
         
         size = condition.numel()
         
@@ -664,7 +657,8 @@ class Array(list):
             index = condition.unravel_index(i)
             item = condition[index]
             if item:
-                indices.append(item)
+                append(item)
+        
         return indices 
     @classmethod
     def norm(cls, mat):
@@ -682,11 +676,11 @@ class Array(list):
         
     @classmethod
     def qr(cls, A):
+        #got this from https://python.quantecon.org/qr_decomp.html
         if not A.twoD:
             return A
-        
         m, n = A.shape  
-        Q = cls.eye(m)  # or my_eye(m) -- see below
+        Q = cls.eye(m)  
         R = A.copy()
         if m == n:
             end = n-1
@@ -694,31 +688,20 @@ class Array(list):
             end = n
         for i in range(0, end):
             H = Array.eye(m)
-
             a = cls._col_index_2D(R[i:], i)
-
             norm_a = Array.norm(a)
             if a[0] < 0.0:
                 norm_a = -norm_a
             v = a / (a[0] + norm_a)
             v[0] = 1.0
-
-            h = Array.eye(len(a)) 
-            
+            h = cls.eye(len(a))  
             h = h - ((2 / cls.dot(v, v))  * (cls.unsqueeze(v, dim=1) @ cls.unsqueeze(v, dim=0) ))
-
-
             hflat = h.flatiter()
             for J in range(i, m):
-                
                 for K in range(i, m):
                     H[J][K] = next(hflat)
-                    
             Q = Q @ H
-           
-
             R = H @ R
-
         return Q, R
 
 
@@ -736,7 +719,7 @@ class Array(list):
         n = len(mat)
         X = mat.copy()
         pq = cls.eye(n)
-        max_ct = 100
+        max_ct = 1000
         ct = 0
         while ct < max_ct:
             Q, R = cls.qr(X)
@@ -751,12 +734,6 @@ class Array(list):
         evecs = pq.copy()
         
         return evals,evecs
-            
-
-    
-    
-    
-    
     
     
     
